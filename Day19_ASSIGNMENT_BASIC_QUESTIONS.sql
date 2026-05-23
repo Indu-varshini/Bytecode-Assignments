@@ -1,0 +1,352 @@
+-- Assignment Questions
+use nineam_class;
+-- PART 1 — Basic Window Functions
+-- 1. Assign row numbers for each customer based on order date.
+SELECT customer_name,order_date,
+       ROW_NUMBER() OVER(ORDER BY order_date) AS rownum
+FROM assignment_ecommerce_orders;
+
+-- 2. Rank customers based on highest sales amount.
+SELECT CUSTOMER_NAME,ORDER_DATE,SALES_AMOUNT,
+       DENSE_RANK() OVER( ORDER BY SALES_AMOUNT DESC) AS RINK
+FROM assignment_ecommerce_orders;
+
+-- 3. Find dense rank of products within each category.
+SELECT CUSTOMER_NAME,ORDER_DATE,PRODUCT_NAME,CATEGORY,
+       DENSE_RANK() OVER(PARTITION BY CATEGORY ORDER BY ORDER_DATE DESC) AS DENSE_RINK
+FROM assignment_ecommerce_orders;
+
+-- 4. Find duplicate sales amounts using RANK() and DENSE_RANK().
+SELECT CUSTOMER_NAME,ORDER_DATE,SALES_AMOUNT,
+        RANK() OVER(ORDER BY SALES_AMOUNT DESC) AS RNK,
+       DENSE_RANK() OVER(ORDER BY SALES_AMOUNT DESC) AS DENSE_RNK
+FROM assignment_ecommerce_orders;
+
+-- 5. Display previous purchase amount for every customer using LAG().
+SELECT ORDER_DATE,SALES_AMOUNT,
+       LAG(SALES_AMOUNT) OVER (ORDER BY ORDER_DATE) AS PREVIOUS_SALE
+FROM assignment_ecommerce_orders;
+       
+-- 6. Display next purchase amount using LEAD().
+SELECT ORDER_DATE,SALES_AMOUNT,
+       LEAD(SALES_AMOUNT) OVER (ORDER BY ORDER_DATE) AS PREVIOUS_SALE
+FROM assignment_ecommerce_orders;
+
+-- 7. Find sales difference between current and previous purchase.
+SELECT ORDER_DATE,
+       SALES_AMOUNT CURRENT_SALE,
+       LAG(SALES_AMOUNT) OVER (ORDER BY ORDER_DATE) AS PREVIOUS_SALE,
+       LEAD(SALES_AMOUNT) OVER(ORDER BY ORDER_DATE) AS NEXT_SALE,
+       SALES_AMOUNT - (LAG(SALES_AMOUNT) OVER(ORDER BY ORDER_DATE)) AS SALES_DIFFERENCE
+       FROM assignment_ecommerce_orders;
+       
+-- 8. Find percentage increase/decrease from previous purchase.
+
+SELECT CUSTOMER_NAME,ORDER_DATE,SALES_AMOUNT,
+       ROUND(
+       ((SALES_AMOUNT -
+       LAG(SALES_AMOUNT) OVER(PARTITION BY CUSTOMER_NAME ORDER BY ORDER_DATE))
+       /
+       LAG(SALES_AMOUNT) OVER(PARTITION BY CUSTOMER_NAME ORDER BY ORDER_DATE)
+       ) * 100,2) AS PERCENT_CHANGE
+FROM assignment_ecommerce_orders;
+
+-- PART 2 — Running & Rolling Calculations
+-- 9. Calculate running total sales for each customer.
+SELECT CUSTOMER_NAME,ORDER_DATE,SALES_AMOUNT,
+       SUM(SALES_AMOUNT) OVER(PARTITION BY CUSTOMER_NAME ORDER BY ORDER_DATE) AS RUNNING_SALES
+FROM assignment_ecommerce_orders;
+
+-- 10. Calculate cumulative sales month-wise.
+SELECT CUSTOMER_NAME,DATE_FORMAT(ORDER_DATE,"%m") AS MONTH_WISE,SALES_AMOUNT,
+       SUM(SALES_AMOUNT) OVER(PARTITION BY CUSTOMER_NAME ORDER BY DATE_FORMAT(ORDER_DATE,"%m")) AS RUNNING_SALES
+FROM assignment_ecommerce_orders;
+
+-- 11. Calculate rolling 3-day sales.
+SELECT ORDER_DATE,SALES_AMOUNT,
+SUM(SALES_AMOUNT) OVER(ORDER BY ORDER_DATE
+       ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS ROLLING_3DAY
+FROM assignment_ecommerce_orders;
+
+-- 12. Calculate rolling 3-order average sales.
+SELECT ORDER_DATE,SALES_AMOUNT,
+       ROUND(AVG(SALES_AMOUNT) OVER(ORDER BY ORDER_DATE
+       ROWS BETWEEN 2 PRECEDING AND CURRENT ROW)) AS ROLLING_3DAY
+FROM assignment_ecommerce_orders;
+
+-- 13. Find moving average sales for each customer.
+SELECT ORDER_DATE,SALES_AMOUNT,
+       ROUND(AVG(SALES_AMOUNT) OVER(PARTITION BY CUSTOMER_NAME ORDER BY ORDER_DATE
+       ROWS BETWEEN 2 PRECEDING AND CURRENT ROW)) AS MOVING_AVG
+FROM assignment_ecommerce_orders;
+
+-- 14. Calculate cumulative category sales.
+SELECT CUSTOMER_NAME,ORDER_DATE,SALES_AMOUNT,CATEGORY,
+       SUM(SALES_AMOUNT) OVER(PARTITION BY CATEGORY ORDER BY ORDER_DATE) AS CUM_CATEGORY_SALES
+FROM assignment_ecommerce_orders;
+
+-- PART 3 — FIRST_VALUE / LAST_VALUE
+-- 15. Find first purchase amount of every customer.
+SELECT CUSTOMER_NAME,ORDER_DATE,SALES_AMOUNT,
+      FIRST_VALUE(SALES_AMOUNT) OVER (PARTITION BY CUSTOMER_NAME ORDER BY ORDER_DATE) AS FST_VALUE
+FROM assignment_ecommerce_orders;
+
+-- 16. Find latest purchase amount of every customer.
+SELECT CUSTOMER_NAME,ORDER_DATE,
+       LAST_VALUE(SALES_AMOUNT) OVER(PARTITION BY CUSTOMER_NAME ORDER BY ORDER_DATE ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS LAST_VALUE_DATE
+       FROM assignment_ecommerce_orders; 
+       
+-- 17. Find first product purchased in each category.
+SELECT CUSTOMER_NAME,ORDER_DATE,PRODUCT_NAME,
+      FIRST_VALUE(PRODUCT_NAME) OVER (PARTITION BY CUSTOMER_NAME ORDER BY ORDER_DATE) AS FST_VALUE
+FROM assignment_ecommerce_orders;
+
+-- 18. Find last product purchased by each customer.
+SELECT CUSTOMER_NAME,PRODUCT_NAME,
+        LAST_VALUE(PRODUCT_NAME) OVER (PARTITION BY CUSTOMER_NAME ORDER BY ORDER_DATE 
+        ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS LST_VALUE
+FROM assignment_ecommerce_orders; 
+
+-- 19. Compare current purchase with first purchase.
+SELECT CUSTOMER_NAME,SALES_AMOUNT,
+        FIRST_VALUE(SALES_AMOUNT) OVER(PARTITION BY CUSTOMER_NAME ORDER BY ORDER_DATE) AS FST_VALUE,
+        SALES_AMOUNT -
+       FIRST_VALUE(SALES_AMOUNT) OVER(PARTITION BY CUSTOMER_NAME ORDER BY ORDER_DATE) AS DIFFERENCE
+FROM assignment_ecommerce_orders; 
+
+-- 20. Compare current purchase with latest purchase
+SELECT CUSTOMER_NAME,SALES_AMOUNT,
+        LAST_VALUE(SALES_AMOUNT) OVER (PARTITION BY CUSTOMER_NAME ORDER BY ORDER_DATE 
+        ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS LST_VALUE,
+        SALES_AMOUNT - LAST_VALUE(SALES_AMOUNT) OVER (PARTITION BY CUSTOMER_NAME ORDER BY ORDER_DATE 
+        ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS DIFFERENCE
+FROM assignment_ecommerce_orders; 
+
+-- PART 4 — NTILE / Percentile Functions
+-- 21. Divide customers into 4 spending groups using NTILE(4).
+SELECT CUSTOMER_NAME,ORDER_DATE,SALES_AMOUNT,
+        NTILE(4) OVER(ORDER BY SALES_AMOUNT DESC) AS SPENDING_GROUP
+FROM assignment_ecommerce_orders;
+
+-- 22. Find top 25% customers based on sales.
+
+SELECT * FROM
+(
+    SELECT CUSTOMER_NAME,SALES_AMOUNT,
+        NTILE(4) OVER(ORDER BY SALES_AMOUNT DESC) AS GRP
+    FROM assignment_ecommerce_orders
+) A
+WHERE GRP = 1;
+
+-- 23. Calculate PERCENT_RANK() for sales amount.
+SELECT CUSTOMER_NAME,SALES_AMOUNT,
+        PERCENT_RANK() OVER (PARTITION BY CUSTOMER_NAME ORDER BY ORDER_DATE) AS PERCENT
+FROM assignment_ecommerce_orders;
+
+-- 24. Calculate CUME_DIST() for customer sales.
+SELECT CUSTOMER_NAME,SALES_AMOUNT,
+        ROUND(CUME_DIST() OVER (PARTITION BY CUSTOMER_NAME ORDER BY ORDER_DATE),3) AS CUMMULATIVE
+FROM assignment_ecommerce_orders;
+
+-- 25. Identify customers whose sales fall above 80% distribution.
+SELECT * FROM
+(
+SELECT CUSTOMER_NAME,SALES_AMOUNT,
+       CUME_DIST() OVER(ORDER BY SALES_AMOUNT) AS CD
+FROM assignment_ecommerce_orders
+) A
+WHERE CD > 0.8;
+
+
+-- PART 5 — Window Frames
+/* 
+26. Calculate running total using:
+ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+*/
+SELECT CUSTOMER_NAME,ORDER_DATE,SALES_AMOUNT,
+       SUM(SALES_AMOUNT) OVER(ORDER BY ORDER_DATE ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS RUNNING_TOTAL
+FROM assignment_ecommerce_orders;
+       
+/*       
+27. Calculate next 2 orders sales using:
+ROWS BETWEEN CURRENT ROW AND 2 FOLLOWING
+*/
+SELECT CUSTOMER_NAME,ORDER_DATE,SALES_AMOUNT,
+       SUM(SALES_AMOUNT) OVER(ORDER BY ORDER_DATE ROWS BETWEEN CURRENT ROW AND 2 FOLLOWING) AS NEXT2_TOTAL
+FROM assignment_ecommerce_orders;
+
+/*
+28. Calculate previous 2 orders sales using:
+ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
+*/
+SELECT CUSTOMER_NAME,ORDER_DATE,SALES_AMOUNT,
+       SUM(SALES_AMOUNT) OVER(ORDER BY ORDER_DATE ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS PREV2_TOTAL
+FROM assignment_ecommerce_orders;
+
+/*
+29. Find centered moving average using:
+ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING
+*/
+SELECT CUSTOMER_NAME,ORDER_DATE,SALES_AMOUNT,
+       ROUND(AVG(SALES_AMOUNT) OVER(ORDER BY ORDER_DATE ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING)) AS CENTER_TOTAL
+FROM assignment_ecommerce_orders;
+
+-- 30. Compare all window frame outputs in one query.
+SELECT CUSTOMER_NAME,SALES_AMOUNT,
+        SUM(SALES_AMOUNT) OVER(ORDER BY ORDER_DATE ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS RUNNING_TOTAL,
+        SUM(SALES_AMOUNT) OVER(ORDER BY ORDER_DATE ROWS BETWEEN CURRENT ROW AND 2 FOLLOWING) AS NEXT2,
+        SUM(SALES_AMOUNT) OVER(ORDER BY ORDER_DATE ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS PREV2
+FROM assignment_ecommerce_orders;
+
+-- PART 6 — Real-Time Business Scenarios
+-- 31. Find top 3 highest sales every month.
+
+SELECT * FROM
+(
+SELECT MONTH(ORDER_DATE) AS MONTH_NUM,CUSTOMER_NAME,SALES_AMOUNT,
+       RANK() OVER(PARTITION BY MONTH(ORDER_DATE) ORDER BY SALES_AMOUNT DESC) AS RNK
+FROM assignment_ecommerce_orders
+) A
+WHERE RNK <= 3;
+
+-- 32. Find customer who purchased continuously for 3 months.
+SELECT CUSTOMER_NAME,
+       COUNT(DISTINCT MONTH(ORDER_DATE)) AS MONTHS
+FROM assignment_ecommerce_orders
+GROUP BY CUSTOMER_NAME
+HAVING MONTHS >= 3;
+
+-- 33. Find repeat customers.
+SELECT CUSTOMER_NAME,
+       COUNT(*) AS TOTAL_ORDERS
+FROM assignment_ecommerce_orders
+GROUP BY CUSTOMER_NAME
+HAVING COUNT(*) > 1;
+
+-- 34. Find customers whose current purchase is lower than previous purchase.
+SELECT CUSTOMER_NAME,ORDER_DATE,SALES_AMOUNT,
+       LAG(SALES_AMOUNT) OVER(PARTITION BY CUSTOMER_NAME ORDER BY ORDER_DATE) AS PREV_SALES
+FROM assignment_ecommerce_orders;
+
+-- 35. Find highest selling category every month.
+-- 35. Highest selling category every month
+
+SELECT * FROM
+(
+SELECT MONTH(ORDER_DATE) AS MONTH_NUM,CATEGORY,
+       SUM(SALES_AMOUNT) AS TOTAL_SALES,
+       RANK() OVER(PARTITION BY MONTH(ORDER_DATE) ORDER BY SUM(SALES_AMOUNT) DESC) AS RNK
+FROM assignment_ecommerce_orders
+GROUP BY MONTH(ORDER_DATE), CATEGORY
+) A
+WHERE RNK = 1;
+
+-- 36. Find contribution % of each order to total monthly sales.
+SELECT ORDER_DATE,SALES_AMOUNT,
+       ROUND(SALES_AMOUNT * 100 / SUM(SALES_AMOUNT) OVER(PARTITION BY MONTH(ORDER_DATE)),2) AS CONTRIBUTION_PERCENT
+FROM assignment_ecommerce_orders;
+
+-- 37. Find customers contributing highest revenue.
+SELECT CUSTOMER_NAME,SUM(SALES_AMOUNT) AS TOTAL_REVENUE,
+       RANK() OVER(ORDER BY SUM(SALES_AMOUNT) DESC) AS RNK
+FROM assignment_ecommerce_orders
+GROUP BY CUSTOMER_NAME;
+
+-- 38. Identify low-performing months.
+SELECT MONTH(ORDER_DATE) AS MONTH_NUM,SUM(SALES_AMOUNT) AS TOTAL_SALES
+FROM assignment_ecommerce_orders
+GROUP BY MONTH(ORDER_DATE)
+HAVING TOTAL_SALES <= 
+(
+SELECT AVG(SALES_AMOUNT)
+FROM assignment_ecommerce_orders
+);
+
+-- 39. Find purchase gap between consecutive orders.
+SELECT CUSTOMER_NAME,ORDER_DATE,
+DATEDIFF(ORDER_DATE,LAG(ORDER_DATE)OVER(PARTITION BY CUSTOMER_NAME ORDER BY ORDER_DATE)) AS GAP_DAYS
+FROM assignment_ecommerce_orders;
+
+-- 40. Find customers whose sales are continuously increasing.
+SELECT CUSTOMER_NAME,ORDER_DATE,SALES_AMOUNT,
+LAG(SALES_AMOUNT)OVER(PARTITION BY CUSTOMER_NAME ORDER BY ORDER_DATE) AS INCREASING_SALES
+FROM assignment_ecommerce_orders;
+
+-- Advanced Questions
+-- 41. Find second highest purchase of every customer.
+SELECT *
+FROM
+(
+SELECT CUSTOMER_NAME,SALES_AMOUNT,
+       DENSE_RANK() OVER(PARTITION BY CUSTOMER_NAME ORDER BY SALES_AMOUNT DESC) AS RNK
+FROM assignment_ecommerce_orders
+) A
+WHERE RNK = 2;
+
+-- 42. Find nth highest sales using window functions.
+SELECT *
+FROM
+(
+SELECT CUSTOMER_NAME,SALES_AMOUNT,
+       DENSE_RANK() OVER(PARTITION BY CUSTOMER_NAME ORDER BY SALES_AMOUNT DESC) AS RNK
+FROM assignment_ecommerce_orders
+) A
+WHERE RNK = 5;
+
+-- 43. Remove duplicates using ROW_NUMBER().
+SELECT *
+FROM (
+SELECT *,
+       ROW_NUMBER() OVER(PARTITION BY CUSTOMER_NAME,ORDER_DATE,SALES_AMOUNT ORDER BY ORDER_DATE) AS RNK
+FROM assignment_ecommerce_orders
+) A
+WHERE RNK = 1;
+
+-- 44. Find first and last purchase date of each customer.
+SELECT CUSTOMER_NAME,ORDER_DATE,SALES_AMOUNT,
+         FIRST_VALUE(ORDER_DATE) OVER(PARTITION BY CUSTOMER_NAME ORDER BY ORDER_DATE) AS FIRST_PURCHASE,
+         LAST_VALUE(ORDER_DATE) OVER (PARTITION BY CUSTOMER_NAME ORDER BY ORDER_DATE  ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS LAST_PURCHASE
+FROM assignment_ecommerce_orders;
+
+-- 45. Find highest purchase growth month-over-month.
+SELECT CUSTOMER_NAME,DATE_FORMAT(ORDER_DATE,"%m") AS MONTH_WISE,SALES_AMOUNT,
+       MAX(SALES_AMOUNT) OVER(PARTITION BY CUSTOMER_NAME,DATE_FORMAT(ORDER_DATE,"%m") ORDER BY DATE_FORMAT(ORDER_DATE,"%m")) AS  HIGHEST_GROWTH
+FROM assignment_ecommerce_orders;
+
+-- 46. Find customers whose purchase amount is above customer average.
+SELECT CUSTOMER_NAME,SALES_AMOUNT
+FROM(
+SELECT CUSTOMER_NAME,SALES_AMOUNT,
+        ROUND(AVG(SALES_AMOUNT) OVER (PARTITION BY CUSTOMER_NAME)) AS AVG_SALES
+FROM assignment_ecommerce_orders
+) A 
+WHERE SALES_AMOUNT > AVG_SALES;
+
+-- 47. Find monthly sales trend using LAG().
+SELECT MONTH(ORDER_DATE) AS MONTH_NUM,SUM(SALES_AMOUNT) AS MONTHLY_SALES,
+       LAG(SUM(SALES_AMOUNT)) OVER(ORDER BY MONTH(ORDER_DATE)) AS  PREV_MONTH_SALES
+FROM assignment_ecommerce_orders
+GROUP BY MONTH(ORDER_DATE);
+
+-- 48. Compare each month's sales with previous month.
+SELECT MONTH(ORDER_DATE) AS MONTH_NUM,SUM(SALES_AMOUNT) AS MONTHLY_SALES,
+       SUM(SALES_AMOUNT) - 
+       LAG(SUM(SALES_AMOUNT)) OVER(ORDER BY MONTH(ORDER_DATE)) AS COMPARISION
+FROM assignment_ecommerce_orders
+GROUP BY MONTH(ORDER_DATE);
+
+-- 49. Find highest order of every category.
+SELECT *
+FROM
+(
+SELECT CUSTOMER_NAME,SALES_AMOUNT,CATEGORY,
+       DENSE_RANK() OVER(PARTITION BY CATEGORY ORDER BY SALES_AMOUNT DESC) AS RNK
+FROM assignment_ecommerce_orders
+) A
+WHERE RNK = 1;
+
+-- 50. Find customer retention month-wise.
+SELECT MONTH(ORDER_DATE) AS MONTH_NUM,
+       COUNT(DISTINCT CUSTOMER_NAME) AS RETAINED_CUSTOMERS
+FROM assignment_ecommerce_orders
+GROUP BY MONTH(ORDER_DATE);
